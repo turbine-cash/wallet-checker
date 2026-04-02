@@ -4,18 +4,24 @@ export default {
   theme: {
     extend: {
       colors: {
-        audit: {
-          base: "#060915",
-          panel: "#0A1020",
-          cyan: "#82FFF4",
-          amber: "#FFBF5F",
-          violet: "#BA93FF",
-          text: "#EEF4FF",
+        turbine: {
+          black: "#000000",
+          charcoal: "#1F1F1F",
+          gray: "#2A2A2A",
+          orange: "#F97315",
+          green: "#4ADE80",
+          silver: "#ECEEF1",
+          slate: "#88898B",
+          "light-gray": "#FFFFFF",
+        },
+        "turbine-cash": {
+          silver: "#ECEEF1",
+          white: "#FFFFFF",
+          orange: "#F97315",
         },
       },
       fontFamily: {
-        body: ['"IBM Plex Sans"', "sans-serif"],
-        display: ['"Instrument Serif"', "serif"],
+        "turbine-cash": ["Outfit", "sans-serif"],
       },
     },
   },
