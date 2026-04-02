@@ -148,7 +148,7 @@ async function scanHeliusHistory(
 
       runtime.progress.transactionsScanned += 1;
 
-      const normalized = normalizeHeliusTransaction(entry);
+      const normalized = normalizeHeliusTransaction(entry, inputs.walletPubkey);
       const row = normalized
         ? analyzeTransaction(normalized, inputs.rpcUrl)
         : null;
@@ -241,6 +241,7 @@ async function scanStandardHistory(
           const normalized = normalizeStandardTransaction(
             signatureInfo,
             transaction,
+            inputs.walletPubkey,
           );
           const row = normalized
             ? analyzeTransaction(normalized, inputs.rpcUrl)
@@ -383,7 +384,7 @@ export async function scanWalletHistory(
       "completed",
       rows.length > 0
         ? `Scan complete. Found ${rows.length} matching transactions.`
-        : "Scan complete. No delegation or durable nonce activity found.",
+        : "Scan complete. No signer-authorized delegation or durable nonce activity found.",
     );
     return { progress: createProgressSnapshot(progress), rows };
   } catch (error) {

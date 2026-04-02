@@ -38,6 +38,8 @@ function createJsonRpcErrorResponse(code: number, message: string): Response {
 }
 
 describe("scanWalletHistory", () => {
+  const walletPubkey = "11111111111111111111111111111111";
+
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -91,7 +93,13 @@ describe("scanWalletHistory", () => {
                   slot: 111,
                   transaction: {
                     message: {
-                      accountKeys: [],
+                      accountKeys: [
+                        {
+                          pubkey: walletPubkey,
+                          signer: true,
+                          writable: true,
+                        },
+                      ],
                       instructions: [
                         {
                           parsed: {
@@ -118,7 +126,13 @@ describe("scanWalletHistory", () => {
                   slot: 110,
                   transaction: {
                     message: {
-                      accountKeys: [],
+                      accountKeys: [
+                        {
+                          pubkey: walletPubkey,
+                          signer: false,
+                          writable: false,
+                        },
+                      ],
                       instructions: [
                         {
                           parsed: {
@@ -146,7 +160,7 @@ describe("scanWalletHistory", () => {
       provider: "standard",
       rpcUrl: "https://api.mainnet-beta.solana.com",
       scanMode: "standard",
-      walletPubkey: "11111111111111111111111111111111",
+      walletPubkey,
     };
 
     const result = await scanWalletHistory(inputs, {
@@ -198,7 +212,13 @@ describe("scanWalletHistory", () => {
                     slot: 222,
                     transaction: {
                       message: {
-                        accountKeys: [],
+                        accountKeys: [
+                          {
+                            pubkey: walletPubkey,
+                            signer: true,
+                            writable: true,
+                          },
+                        ],
                         instructions: [
                           {
                             parsed: {
@@ -229,7 +249,7 @@ describe("scanWalletHistory", () => {
       provider: "helius",
       rpcUrl: "https://mainnet.helius-rpc.com/?api-key=test",
       scanMode: "helius",
-      walletPubkey: "11111111111111111111111111111111",
+      walletPubkey,
     };
 
     const result = await scanWalletHistory(inputs, {
@@ -301,7 +321,13 @@ describe("scanWalletHistory", () => {
             slot: 333,
             transaction: {
               message: {
-                accountKeys: [],
+                accountKeys: [
+                  {
+                    pubkey: walletPubkey,
+                    signer: true,
+                    writable: true,
+                  },
+                ],
                 instructions: [
                   {
                     parsed: {
@@ -332,7 +358,7 @@ describe("scanWalletHistory", () => {
       provider: "helius",
       rpcUrl: "https://mainnet.helius-rpc.com/?api-key=test",
       scanMode: "helius",
-      walletPubkey: "11111111111111111111111111111111",
+      walletPubkey,
     };
 
     const result = await scanWalletHistory(inputs, {
@@ -352,5 +378,91 @@ describe("scanWalletHistory", () => {
       "getTransaction",
       "getSignaturesForAddress",
     ]);
+  });
+
+  it("skips matching transactions when the wallet did not sign them", async () => {
+    const fetchMock = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const request = JSON.parse(String(init?.body)) as {
+          method: string;
+          params: unknown[];
+        };
+
+        if (request.method === "getSignaturesForAddress") {
+          const config = request.params[1] as { before?: string };
+
+          return createJsonRpcResponse(
+            config?.before
+              ? []
+              : [
+                  {
+                    blockTime: 1_735_689_600,
+                    confirmationStatus: "finalized",
+                    err: null,
+                    memo: null,
+                    signature: "sigUnsigned",
+                    slot: 444,
+                  },
+                ],
+          );
+        }
+
+        if (request.method === "getTransaction") {
+          return createJsonRpcResponse({
+            blockTime: 1_735_689_600,
+            meta: { err: null, innerInstructions: [] },
+            slot: 444,
+            transaction: {
+              message: {
+                accountKeys: [
+                  {
+                    pubkey: walletPubkey,
+                    signer: false,
+                    writable: false,
+                  },
+                ],
+                instructions: [
+                  {
+                    parsed: {
+                      info: {
+                        delegate:
+                          "Deleg8H9c5mDV1A7v7UR4uuV4qx6dzM3D8zz111111111",
+                        source: "Tokn111111111111111111111111111111111111111",
+                      },
+                      type: "approve",
+                    },
+                    program: "spl-token",
+                    programId: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+                  },
+                ],
+              },
+              signatures: ["sigUnsigned"],
+            },
+          });
+        }
+
+        throw new Error(`Unexpected RPC method ${request.method}`);
+      },
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const inputs: ScanInputs = {
+      provider: "standard",
+      rpcUrl: "https://api.mainnet-beta.solana.com",
+      scanMode: "standard",
+      walletPubkey,
+    };
+
+    const result = await scanWalletHistory(inputs, {
+      signal: new AbortController().signal,
+      standardPageSize: 1,
+    });
+
+    expect(result.rows).toHaveLength(0);
+    expect(result.progress.transactionsScanned).toBe(1);
+    expect(result.progress.statusText).toBe(
+      "Scan complete. No signer-authorized delegation or durable nonce activity found.",
+    );
   });
 });

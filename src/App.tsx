@@ -97,7 +97,7 @@ function EmptyState({
   if (hasScanned && progress.phase === "completed") {
     return (
       <div className="state-card">
-        No token delegation or durable nonce usage was found.
+        No signer-authorized token delegation or durable nonce usage was found.
       </div>
     );
   }

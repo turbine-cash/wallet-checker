@@ -19,7 +19,7 @@ If the RPC URL is recognized as Helius, the UI exposes two scan modes:
 
 - live scan activity with pages fetched, transactions scanned, retries, and request errors
 - a hits-only results table
-- one row per matching transaction with the signature, status, timestamp, badges, and a short finding summary
+- one row per matching transaction that the scanned wallet signed, with the signature, status, timestamp, badges, and a short finding summary
 
 ## Runtime Behavior
 

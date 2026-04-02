@@ -1,10 +1,21 @@
 import { describe, expect, it } from "vitest";
-import { analyzeTransaction } from "./analyze";
-import type { NormalizedTransaction, RpcParsedInstruction } from "./types";
+import {
+  analyzeTransaction,
+  normalizeHeliusTransaction,
+  normalizeStandardTransaction,
+} from "./analyze";
+import type {
+  HeliusTransactionEntry,
+  NormalizedTransaction,
+  RpcParsedInstruction,
+  RpcSignatureInfo,
+  RpcTransactionResponse,
+} from "./types";
 import { buildExplorerUrl } from "./utils";
 
 const RPC_URL = "https://api.mainnet-beta.solana.com";
 const DEVNET_RPC_URL = "https://api.devnet.solana.com";
+const WALLET_PUBKEY = "11111111111111111111111111111111";
 const DEVNET_NONCE_SETUP_SIGNATURE =
   "skkfzUQrZF2rcmrhAQV6SuLa7Hj3jPFu7cfXAHvkVep3Lk3fNSVypwULhqMRinsa6Zj5xjj8zKZBQ1agMxwuABZ";
 const DEVNET_NONCE_SETUP_EXPLORER_URL =
@@ -173,5 +184,94 @@ describe("analyzeTransaction", () => {
     expect(buildExplorerUrl(DEVNET_NONCE_SETUP_SIGNATURE, DEVNET_RPC_URL)).toBe(
       DEVNET_NONCE_SETUP_EXPLORER_URL,
     );
+  });
+
+  it("keeps standard RPC transactions only when the wallet is a signer", () => {
+    const signatureInfo: RpcSignatureInfo = {
+      blockTime: 1_735_689_600,
+      confirmationStatus: "finalized",
+      err: null,
+      memo: null,
+      signature: "standardSig",
+      slot: 888,
+    };
+    const transaction: RpcTransactionResponse = {
+      blockTime: 1_735_689_600,
+      meta: {
+        err: null,
+        innerInstructions: [],
+      },
+      slot: 888,
+      transaction: {
+        message: {
+          accountKeys: [
+            {
+              pubkey: WALLET_PUBKEY,
+              signer: true,
+              writable: true,
+            },
+          ],
+          instructions: [],
+        },
+        signatures: ["standardSig"],
+      },
+    };
+
+    expect(
+      normalizeStandardTransaction(signatureInfo, transaction, WALLET_PUBKEY),
+    ).not.toBeNull();
+    expect(
+      normalizeStandardTransaction(
+        signatureInfo,
+        {
+          ...transaction,
+          transaction: {
+            ...transaction.transaction!,
+            message: {
+              ...transaction.transaction!.message,
+              accountKeys: [
+                {
+                  pubkey: WALLET_PUBKEY,
+                  signer: false,
+                  writable: true,
+                },
+              ],
+              instructions: [],
+            },
+          },
+        },
+        WALLET_PUBKEY,
+      ),
+    ).toBeNull();
+  });
+
+  it("drops Helius transactions when the wallet is not marked as a signer", () => {
+    const entry: HeliusTransactionEntry = {
+      blockTime: 1_735_689_600,
+      confirmationStatus: "finalized",
+      err: null,
+      memo: null,
+      meta: {
+        err: null,
+        innerInstructions: [],
+      },
+      signature: "heliusSig",
+      slot: 999,
+      transaction: {
+        message: {
+          accountKeys: [
+            {
+              pubkey: WALLET_PUBKEY,
+              signer: false,
+              writable: true,
+            },
+          ],
+          instructions: [],
+        },
+        signatures: ["heliusSig"],
+      },
+    };
+
+    expect(normalizeHeliusTransaction(entry, WALLET_PUBKEY)).toBeNull();
   });
 });

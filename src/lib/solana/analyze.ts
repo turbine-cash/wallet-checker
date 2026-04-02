@@ -4,8 +4,10 @@ import type {
   FindingRow,
   HeliusTransactionEntry,
   NormalizedTransaction,
+  RpcAccountKeyInfo,
   RpcParsedInfo,
   RpcParsedInstruction,
+  RpcParsedMessage,
   RpcSignatureInfo,
   RpcTransactionResponse,
   TokenDelegationFinding,
@@ -38,6 +40,30 @@ function toLowerCase(value: string | null | undefined): string | null {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isWalletSigner(
+  accountKey: string | RpcAccountKeyInfo,
+  walletPubkey: string,
+): boolean {
+  return (
+    typeof accountKey !== "string" &&
+    accountKey.pubkey === walletPubkey &&
+    accountKey.signer === true
+  );
+}
+
+function didWalletSignTransaction(
+  message: RpcParsedMessage,
+  walletPubkey: string,
+): boolean {
+  if (!walletPubkey) {
+    return false;
+  }
+
+  return message.accountKeys.some((accountKey) =>
+    isWalletSigner(accountKey, walletPubkey),
+  );
 }
 
 function getInstructionType(parsed: RpcParsedInfo | undefined): string | null {
@@ -231,8 +257,15 @@ function buildSummary(
 export function normalizeStandardTransaction(
   signatureInfo: RpcSignatureInfo,
   transaction: RpcTransactionResponse | null,
+  walletPubkey: string,
 ): NormalizedTransaction | null {
   if (!transaction?.transaction?.message) {
+    return null;
+  }
+
+  if (
+    !didWalletSignTransaction(transaction.transaction.message, walletPubkey)
+  ) {
     return null;
   }
 
@@ -252,8 +285,13 @@ export function normalizeStandardTransaction(
 
 export function normalizeHeliusTransaction(
   entry: HeliusTransactionEntry,
+  walletPubkey: string,
 ): NormalizedTransaction | null {
   if (!entry.transaction?.message) {
+    return null;
+  }
+
+  if (!didWalletSignTransaction(entry.transaction.message, walletPubkey)) {
     return null;
   }
 
