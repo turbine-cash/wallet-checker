@@ -102,8 +102,7 @@ function EmptyState({
   if (hasScanned && progress.phase === "completed") {
     return (
       <div className="state-card">
-        No token delegation or durable nonce usage was found in the scanned
-        history.
+        No token delegation or durable nonce usage was found.
       </div>
     );
   }
@@ -118,8 +117,7 @@ function EmptyState({
 
   return (
     <div className="state-card state-card-muted">
-      Paste an RPC URL and wallet pubkey to scan historical activity. Matching
-      transactions will appear here as soon as they are found.
+      Paste an RPC URL and wallet pubkey to scan historical activity.
     </div>
   );
 }
@@ -141,13 +139,7 @@ function ResultCard({ row }: { row: FindingRow }) {
             Slot {formatCount(row.slot)} · {formatCompactDate(row.blockTime)}
           </span>
         </div>
-        <div className="finding-card-actions">
-          <StatusPill status={row.status} />
-          <span className="finding-card-link">View transaction</span>
-        </div>
-      </div>
 
-      <div className="finding-card-body">
         <div className="finding-card-badges">
           {row.findings.map((finding, index) => (
             <FindingBadge
@@ -156,7 +148,10 @@ function ResultCard({ row }: { row: FindingRow }) {
             />
           ))}
         </div>
-        <p className="finding-card-summary">{row.summary}</p>
+
+        <div className="finding-card-actions">
+          <StatusPill status={row.status} />
+        </div>
       </div>
     </a>
   );
@@ -171,15 +166,31 @@ function ResultList({
   hasScanned: boolean;
   progress: ScanProgress;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
   if (rows.length === 0) {
     return <EmptyState hasScanned={hasScanned} progress={progress} />;
   }
 
+  const visibleRows = isExpanded ? rows : rows.slice(0, 5);
+  const hiddenCount = rows.length - visibleRows.length;
+
   return (
     <div className="result-stack">
-      {rows.map((row) => (
+      {visibleRows.map((row) => (
         <ResultCard key={`${row.signature}-${row.slot}`} row={row} />
       ))}
+
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setIsExpanded(true)}
+          className="secondary-btn"
+          style={{ width: "100%", marginTop: "0.5rem" }}
+        >
+          View all {hiddenCount} more findings
+        </button>
+      )}
     </div>
   );
 }
@@ -319,32 +330,22 @@ function App() {
 
   return (
     <main className="theme-stage">
-      <div className="theme-glow theme-glow-top" />
-      <div className="theme-glow theme-glow-left" />
-      <div className="theme-glow theme-glow-right" />
-
       <section className="shell-card">
         <header className="shell-header">
-          <p className="shell-eyebrow">Historical Wallet Audit</p>
-          <h1 className="shell-title">
-            Scan delegation and durable nonce activity.
-          </h1>
-          <p className="shell-copy">
-            Browser-based wallet checks with the same warm glass treatment as
-            the `links` app, but focused on wallet risk signals and nothing
-            else.
-          </p>
-          <div className="shell-note">
-            Requests go straight from the browser to the RPC URL you enter. If a
-            provider blocks CORS, the scan will fail here too.
-          </div>
+          <p className="shell-eyebrow">Wallet Audit</p>
+          <h1 className="shell-title">Scan delegation & nonces.</h1>
         </header>
 
         <form className="scanner-form" onSubmit={handleSubmit}>
           <div className="field-block">
-            <label htmlFor="rpc-url" className="field-label">
-              RPC URL
-            </label>
+            <div className="field-heading-row">
+              <label htmlFor="rpc-url" className="field-label">
+                RPC URL
+              </label>
+              <span className="field-caption">
+                {provider === "helius" ? "Helius Detected" : "Standard RPC"}
+              </span>
+            </div>
             <input
               id="rpc-url"
               type="url"
@@ -353,13 +354,8 @@ function App() {
               value={rpcUrl}
               onChange={(event) => setRpcUrl(event.target.value)}
               className="field-shell"
-              placeholder="https://mainnet.helius-rpc.com/?api-key=..."
+              placeholder="https://mainnet.helius-rpc.com/..."
             />
-            <div className="field-meta-row">
-              <span className="meta-pill">
-                Provider: {provider === "helius" ? "Helius" : "Standard RPC"}
-              </span>
-            </div>
             {rpcUrlError ? <p className="field-error">{rpcUrlError}</p> : null}
           </div>
 
@@ -375,17 +371,13 @@ function App() {
               value={walletPubkey}
               onChange={(event) => setWalletPubkey(event.target.value)}
               className="field-shell"
-              placeholder="Enter the wallet address to audit"
+              placeholder="Enter the base58 wallet address"
             />
             {pubkeyError ? <p className="field-error">{pubkeyError}</p> : null}
           </div>
 
           <div className="field-block">
-            <div className="field-heading-row">
-              <span className="field-label">Scan mode</span>
-              <span className="field-caption">Finalized commitment</span>
-            </div>
-
+            <span className="field-label">Scan Mode</span>
             <div className="mode-switch">
               <button
                 type="button"
@@ -397,10 +389,7 @@ function App() {
                   provider !== "helius" && "mode-card-disabled",
                 )}
               >
-                <span className="mode-card-title">Standard compatibility</span>
-                <span className="mode-card-copy">
-                  `getSignaturesForAddress` plus `getTransaction`.
-                </span>
+                Standard
               </button>
 
               <button
@@ -413,21 +402,9 @@ function App() {
                   provider !== "helius" && "mode-card-disabled",
                 )}
               >
-                <span className="mode-card-title">
-                  Helius full transactions
-                </span>
-                <span className="mode-card-copy">
-                  `getTransactionsForAddress` with parsed full transactions.
-                </span>
+                Helius Full
               </button>
             </div>
-
-            {provider !== "helius" ? (
-              <p className="field-caption field-caption-block">
-                Helius full-history mode appears only when the RPC host is
-                recognized as Helius.
-              </p>
-            ) : null}
           </div>
 
           <div className="action-row">
@@ -460,8 +437,7 @@ function App() {
         <section className="panel-section">
           <div className="section-head">
             <div>
-              <p className="section-eyebrow">Live activity</p>
-              <p className="section-copy">{progress.statusText}</p>
+              <p className="section-eyebrow">Live Activity</p>
             </div>
             <span className="meta-pill">{progress.phase}</span>
           </div>
@@ -484,39 +460,20 @@ function App() {
               value={formatCount(progress.pagesFetched)}
             />
             <ProgressStat
-              label="Transactions"
+              label="Txns"
               value={formatCount(progress.transactionsScanned)}
             />
             <ProgressStat label="Hits" value={formatCount(rows.length)} />
-            <ProgressStat
-              label="Elapsed"
-              value={formatElapsed(liveElapsedMs)}
-            />
-          </div>
-
-          <div className="meta-row">
-            <span className="meta-pill">
-              Retries {formatCount(progress.retries)}
-            </span>
-            <span className="meta-pill">
-              Errors {formatCount(progress.requestErrors)}
-            </span>
-            <span className="meta-pill">
-              Cursor{" "}
-              {progress.cursor ? shortenAddress(progress.cursor) : "none"}
-            </span>
+            <ProgressStat label="Time" value={formatElapsed(liveElapsedMs)} />
           </div>
         </section>
 
         <section className="panel-section">
           <div className="section-head">
             <div>
-              <p className="section-eyebrow">Matching transactions</p>
-              <h2 className="section-title">
-                Result cards for delegation and nonce hits.
-              </h2>
+              <p className="section-eyebrow">Findings</p>
             </div>
-            <span className="meta-pill">{formatCount(rows.length)} rows</span>
+            <span className="meta-pill">{formatCount(rows.length)} hits</span>
           </div>
 
           {errorMessage ? (
