@@ -332,8 +332,63 @@ function App() {
     <main className="theme-stage">
       <section className="shell-card">
         <header className="shell-header">
-          <p className="shell-eyebrow">Wallet Audit</p>
-          <h1 className="shell-title">Scan delegation & nonces.</h1>
+          <h1 className="shell-title">Wallet Audit</h1>
+          <div className="action-row" style={{ marginTop: "1rem" }}>
+            <a
+              href="https://solana.com/developers/guides/advanced/introduction-to-durable-nonces"
+              target="_blank"
+              rel="noreferrer"
+              className="meta-pill"
+              style={{
+                textTransform: "none",
+                letterSpacing: "normal",
+                gap: "0.4rem",
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              Durable Nonces
+            </a>
+            <a
+              href="https://solana.com/docs/tokens/basics/approve-delegate"
+              target="_blank"
+              rel="noreferrer"
+              className="meta-pill"
+              style={{
+                textTransform: "none",
+                letterSpacing: "normal",
+                gap: "0.4rem",
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="16" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+              </svg>
+              Token Delegation
+            </a>
+          </div>
         </header>
 
         <form className="scanner-form" onSubmit={handleSubmit}>
