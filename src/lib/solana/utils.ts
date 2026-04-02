@@ -1,3 +1,5 @@
+import type { ProviderKind, ScanMode } from "./types";
+
 const BASE58_ALPHABET =
   "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
@@ -14,18 +16,22 @@ export function isValidRpcUrl(value: string): boolean {
   }
 }
 
-export function isHeliusRpcUrl(value: string): boolean {
+function getRpcHostname(value: string): string | null {
   try {
     const url = new URL(value);
-    const host = url.hostname.toLowerCase();
-    return (
-      host.includes("helius-rpc.com") ||
-      host.includes("helius.dev") ||
-      host.includes("helius.xyz")
-    );
+    return url.hostname.toLowerCase();
   } catch {
-    return false;
+    return null;
   }
+}
+
+export function resolveRpcRouting(value: string): {
+  provider: ProviderKind;
+  scanMode: ScanMode;
+} {
+  return getRpcHostname(value) === "mainnet.helius-rpc.com"
+    ? { provider: "helius", scanMode: "helius" }
+    : { provider: "standard", scanMode: "standard" };
 }
 
 export function inferClusterFromRpcUrl(

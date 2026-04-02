@@ -200,47 +200,6 @@ img {
   margin-bottom: 1rem;
 }
 
-.field-caption {
-  font-size: 0.75rem;
-  color: rgba(236, 238, 241, 0.4);
-}
-
-.mode-switch {
-  display: grid;
-  gap: 0.5rem;
-}
-
-.mode-card {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.3rem;
-  background: #222222;
-  color: var(--turbine-white);
-  padding: 0.75rem 1rem;
-  text-align: left;
-  font-size: 0.9rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-}
-
-.mode-card:hover:not(:disabled) {
-  border-color: var(--turbine-orange);
-  background: #262626;
-}
-
-.mode-card-active {
-  border-color: var(--turbine-orange);
-  background: rgba(249, 115, 21, 0.1);
-  color: var(--turbine-orange);
-}
-
-.mode-card-disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
 .action-row {
   display: flex;
   flex-wrap: wrap;
@@ -257,7 +216,11 @@ img {
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    opacity 0.2s ease;
   background-image: none;
   box-shadow: none;
 }
@@ -327,6 +290,11 @@ img {
   background: var(--turbine-danger);
 }
 
+.scan-meter-paused .scan-meter-track {
+  width: 100%;
+  background: rgba(236, 238, 241, 0.32);
+}
+
 .progress-grid {
   display: grid;
   gap: 0.5rem;
@@ -383,7 +351,10 @@ img {
   border-radius: 0.3rem;
   background: #1a1a1a;
   padding: 0.75rem 1rem;
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
 }
 
 .finding-card:hover {
@@ -469,10 +440,6 @@ img {
 }
 
 @media (min-width: 720px) {
-  .mode-switch {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .progress-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

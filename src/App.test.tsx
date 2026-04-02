@@ -56,26 +56,89 @@ describe("App", () => {
     cleanup();
   });
 
-  it("enables Helius full mode only for Helius RPC URLs", () => {
+  it("routes the exact mainnet Helius host automatically and hides mode controls", async () => {
+    mockedScanWalletHistory.mockResolvedValue({
+      progress: createIdleProgress({
+        provider: "helius",
+        rpcUrl: "https://mainnet.helius-rpc.com/?api-key=test",
+        scanMode: "helius",
+        walletPubkey: "11111111111111111111111111111111",
+      }),
+      rows: [],
+    });
+
     render(<App />);
 
-    const heliusButton = screen.getByRole("button", {
-      name: /Helius full transactions/i,
-    });
-    const rpcInput = screen.getByLabelText(/RPC URL/i);
+    expect(screen.queryByText(/Scan Mode/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Helius Full/i })).toBeNull();
+    expect(screen.queryByText(/Helius Detected/i)).not.toBeInTheDocument();
 
-    expect(heliusButton).toBeDisabled();
-
-    fireEvent.change(rpcInput, {
+    fireEvent.change(screen.getByLabelText(/RPC URL/i), {
       target: {
         value: "https://mainnet.helius-rpc.com/?api-key=test",
       },
     });
+    fireEvent.change(screen.getByLabelText(/Wallet Pubkey/i), {
+      target: {
+        value: "11111111111111111111111111111111",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Start scan/i }));
 
-    expect(heliusButton).not.toBeDisabled();
+    await waitFor(() => {
+      expect(mockedScanWalletHistory).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockedScanWalletHistory.mock.calls[0]?.[0]).toMatchObject({
+      provider: "helius",
+      scanMode: "helius",
+    });
   });
 
-  it("renders findings returned by the scan", async () => {
+  it("treats devnet and non-Helius hosts as standard scans", async () => {
+    mockedScanWalletHistory.mockResolvedValue({
+      progress: createIdleProgress({
+        provider: "standard",
+        rpcUrl: "https://devnet.helius-rpc.com/?api-key=test",
+        scanMode: "standard",
+        walletPubkey: "11111111111111111111111111111111",
+      }),
+      rows: [],
+    });
+
+    render(<App />);
+
+    fireEvent.change(screen.getByLabelText(/RPC URL/i), {
+      target: {
+        value: "https://devnet.helius-rpc.com/?api-key=test",
+      },
+    });
+    fireEvent.change(screen.getByLabelText(/Wallet Pubkey/i), {
+      target: {
+        value: "11111111111111111111111111111111",
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Start scan/i }));
+
+    await waitFor(() => {
+      expect(mockedScanWalletHistory).toHaveBeenCalledTimes(1);
+    });
+
+    expect(mockedScanWalletHistory.mock.calls[0]?.[0]).toMatchObject({
+      provider: "standard",
+      scanMode: "standard",
+    });
+  });
+
+  it("renders all findings as compact cards without summary text", async () => {
+    const sixRows = Array.from({ length: 6 }, (_, index) => ({
+      ...sampleRow,
+      blockTime: (sampleRow.blockTime ?? 0) + index,
+      explorerUrl: `https://explorer.solana.com/tx/sampleSig${index}`,
+      signature: `${sampleRow.signature}${index}`,
+      slot: sampleRow.slot + index,
+    }));
+
     mockedScanWalletHistory.mockImplementation(
       async (inputs: ScanInputs, callbacks) => {
         callbacks.onProgress?.({
@@ -87,27 +150,29 @@ describe("App", () => {
           startedAt: Date.now(),
           statusText: "Scanning history.",
         });
-        callbacks.onMatch?.(sampleRow);
 
         const completedProgress = {
           ...createIdleProgress(inputs),
           elapsedMs: 250,
           finishedAt: Date.now(),
-          matchesFound: 1,
+          matchesFound: sixRows.length,
           mode: inputs.scanMode,
           pagesFetched: 1,
           phase: "completed" as const,
           provider: inputs.provider,
           startedAt: Date.now() - 250,
           statusText: "Scan complete.",
-          transactionsScanned: 1,
+          transactionsScanned: sixRows.length,
         };
 
-        callbacks.onProgress?.(completedProgress);
+        for (const row of sixRows) {
+          callbacks.onMatch?.(row);
+        }
 
+        callbacks.onProgress?.(completedProgress);
         return {
           progress: completedProgress,
-          rows: [sampleRow],
+          rows: sixRows,
         };
       },
     );
@@ -127,12 +192,16 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: /Start scan/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Approved delegation for 42 to Deleg/i),
-      ).toBeInTheDocument();
+      expect(screen.getAllByText(/^Delegation$/i)).toHaveLength(sixRows.length);
     });
 
-    expect(screen.getByText(/5h6x...sUYv/i)).toBeInTheDocument();
-    expect(screen.getByText(/Scan complete./i)).toBeInTheDocument();
+    expect(screen.getAllByText(/^Succeeded$/i)).toHaveLength(sixRows.length);
+    expect(
+      screen.queryByText(/Approved delegation for 42 to Deleg/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /View all/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(/^completed$/i)).toBeInTheDocument();
   });
 });

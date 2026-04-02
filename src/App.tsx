@@ -10,9 +10,7 @@ import { createIdleProgress, scanWalletHistory } from "./lib/solana/scan";
 import type {
   Finding,
   FindingRow,
-  ProviderKind,
   ScanInputs,
-  ScanMode,
   ScanProgress,
   ScanStatus,
 } from "./lib/solana/types";
@@ -21,9 +19,9 @@ import {
   formatCompactDate,
   formatCount,
   formatElapsed,
-  isHeliusRpcUrl,
   isValidRpcUrl,
   isValidSolanaPubkey,
+  resolveRpcRouting,
   shortenAddress,
 } from "./lib/solana/utils";
 
@@ -39,16 +37,13 @@ function sortFindingRows(left: FindingRow, right: FindingRow): number {
   return left.signature.localeCompare(right.signature);
 }
 
-function createInputs(
-  rpcUrl: string,
-  walletPubkey: string,
-  provider: ProviderKind,
-  scanMode: ScanMode,
-): ScanInputs {
+function createInputs(rpcUrl: string, walletPubkey: string): ScanInputs {
+  const routing = resolveRpcRouting(rpcUrl.trim());
+
   return {
-    provider,
+    provider: routing.provider,
     rpcUrl: rpcUrl.trim(),
-    scanMode,
+    scanMode: routing.scanMode,
     walletPubkey: walletPubkey.trim(),
   };
 }
@@ -166,31 +161,15 @@ function ResultList({
   hasScanned: boolean;
   progress: ScanProgress;
 }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-
   if (rows.length === 0) {
     return <EmptyState hasScanned={hasScanned} progress={progress} />;
   }
 
-  const visibleRows = isExpanded ? rows : rows.slice(0, 5);
-  const hiddenCount = rows.length - visibleRows.length;
-
   return (
     <div className="result-stack">
-      {visibleRows.map((row) => (
+      {rows.map((row) => (
         <ResultCard key={`${row.signature}-${row.slot}`} row={row} />
       ))}
-
-      {hiddenCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setIsExpanded(true)}
-          className="secondary-btn"
-          style={{ width: "100%", marginTop: "0.5rem" }}
-        >
-          View all {hiddenCount} more findings
-        </button>
-      )}
     </div>
   );
 }
@@ -198,11 +177,10 @@ function ResultList({
 function App() {
   const [rpcUrl, setRpcUrl] = useState("");
   const [walletPubkey, setWalletPubkey] = useState("");
-  const [preferredMode, setPreferredMode] = useState<ScanMode>("standard");
   const [isScanning, setIsScanning] = useState(false);
   const [rows, setRows] = useState<FindingRow[]>([]);
   const [progress, setProgress] = useState(() =>
-    createIdleProgress(createInputs("", "", "standard", "standard")),
+    createIdleProgress(createInputs("", "")),
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
@@ -210,8 +188,6 @@ function App() {
   const scanControllerRef = useRef<AbortController | null>(null);
   const scanRunIdRef = useRef(0);
 
-  const provider = isHeliusRpcUrl(rpcUrl) ? "helius" : "standard";
-  const effectiveMode = provider === "helius" ? preferredMode : "standard";
   const rpcUrlError =
     rpcUrl.trim().length > 0 && !isValidRpcUrl(rpcUrl)
       ? "Enter a full http:// or https:// RPC URL."
@@ -248,12 +224,7 @@ function App() {
       return;
     }
 
-    const nextInputs = createInputs(
-      rpcUrl,
-      walletPubkey,
-      provider,
-      effectiveMode,
-    );
+    const nextInputs = createInputs(rpcUrl, walletPubkey);
 
     scanControllerRef.current?.abort();
 
@@ -321,11 +292,7 @@ function App() {
     setErrorMessage(null);
     setIsScanning(false);
     setClockNow(Date.now());
-    setProgress(
-      createIdleProgress(
-        createInputs(rpcUrl, walletPubkey, provider, effectiveMode),
-      ),
-    );
+    setProgress(createIdleProgress(createInputs(rpcUrl, walletPubkey)));
   }
 
   return (
@@ -397,9 +364,6 @@ function App() {
               <label htmlFor="rpc-url" className="field-label">
                 RPC URL
               </label>
-              <span className="field-caption">
-                {provider === "helius" ? "Helius Detected" : "Standard RPC"}
-              </span>
             </div>
             <input
               id="rpc-url"
@@ -429,37 +393,6 @@ function App() {
               placeholder="Enter the base58 wallet address"
             />
             {pubkeyError ? <p className="field-error">{pubkeyError}</p> : null}
-          </div>
-
-          <div className="field-block">
-            <span className="field-label">Scan Mode</span>
-            <div className="mode-switch">
-              <button
-                type="button"
-                disabled={provider !== "helius"}
-                onClick={() => setPreferredMode("standard")}
-                className={classNames(
-                  "mode-card",
-                  effectiveMode === "standard" && "mode-card-active",
-                  provider !== "helius" && "mode-card-disabled",
-                )}
-              >
-                Standard
-              </button>
-
-              <button
-                type="button"
-                disabled={provider !== "helius"}
-                onClick={() => setPreferredMode("helius")}
-                className={classNames(
-                  "mode-card",
-                  effectiveMode === "helius" && "mode-card-active",
-                  provider !== "helius" && "mode-card-disabled",
-                )}
-              >
-                Helius Full
-              </button>
-            </div>
           </div>
 
           <div className="action-row">
